@@ -1,0 +1,9 @@
+# 请求参数
+float64 lidar_pallet_pose_x
+float64 lidar_pallet_pose_y
+float64 lidar_pallet_pose_theta
+bool success
+
+---
+nav_msgs/Path path  # 响应返回 Path
+float64[] angle     # 返回角度

@@ -1,0 +1,12 @@
+# 请求部分（Goal）
+int32 pallet_types
+int32 work_type
+
+---
+# 结果部分（Result）
+nav_msgs/Path path  # 最终路径
+bool success
+
+---
+# 反馈部分（Feedback）
+float32 progress  # 任务进度：0.0~1.0

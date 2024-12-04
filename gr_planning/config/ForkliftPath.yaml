@@ -1,0 +1,9 @@
+/**:
+  ros__parameters:
+    topic:
+      planning_service_topic: "/planning_path"
+
+    lidar:    # 测量得到的雷达距离
+      delta_x: 0.32
+      delta_y: 0.03
+      delta_theta: 0.0

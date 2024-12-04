@@ -1,0 +1,14 @@
+# Goal
+float64 lidar_pallet_pose_x
+float64 lidar_pallet_pose_y
+float64 lidar_pallet_pose_theta
+bool success
+
+---
+# Result
+nav_msgs/Path path
+float64[] angle
+
+---
+# Feedback
+float64 progress

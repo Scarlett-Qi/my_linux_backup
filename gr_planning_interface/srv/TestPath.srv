@@ -1,0 +1,6 @@
+# 请求参数
+int32 pallet_types
+int32 work_type
+
+---
+nav_msgs/Path path  # 响应返回 Path
