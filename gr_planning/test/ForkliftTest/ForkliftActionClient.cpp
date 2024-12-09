@@ -30,7 +30,6 @@ private:
         auto goal = ForkliftAction::Goal();
         goal.pallet_types = 1;
         goal.work_type = 1;
-        goal.check_pallet_alignment = false;
 
         RCLCPP_INFO(this->get_logger(), "Sending goal...");
 

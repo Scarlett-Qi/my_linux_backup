@@ -53,7 +53,7 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
     }
 
     auto detect_future = detect_client_->async_send_request(detect_request, 
-        [this, goal, goal_handle, result, feedback](rclcpp::Client<ridar_service_interface::srv::DetectPointCloud>::SharedFuture detect_future) {
+        [this, goal_handle, result, feedback](rclcpp::Client<ridar_service_interface::srv::DetectPointCloud>::SharedFuture detect_future) {
             try {
                 auto detect_response = detect_future.get();
                 RCLCPP_INFO(this->get_logger(), "Detect result: x = %f, y = %f, theta = %f",
@@ -104,24 +104,24 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
                             return;
                         }
                     };
+                // path_client_->async_send_goal(path_goal, options);
 
-                if (!goal->check_pallet_alignment) {
+                // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
+                double max_theta;   //根据托盘孔径大小进行确定
+                max_theta = atan2(0.135, 2);    //0.135是孔径半径，2是叉车距离托盘2米
+                // tolerance_lidar_x 是当雷达偏移到能进入托盘的极限距离 && (detect_response->x.data * detect_response->theta.data < 0)
+                if ((abs(detect_response->x.data) < tolerance_lidar_x) && (abs(detect_response->theta.data) < tolerance_theta) && (atan2(abs(detect_response->x.data), 2) * 180.0f / M_PI < tolerance_theta)) {
+                    result->success = true;
+                    result->is_pallet_aligned = true;
+                    result->distance_to_pallet = detect_response->y.data;
+                    goal_handle->succeed(result);
+                    RCLCPP_INFO(this->get_logger(), "The forklift is line. The distance is: ", result->distance_to_pallet);
+                } else {
+                    result->is_pallet_aligned = false;
+                    result->distance_to_pallet = detect_response->y.data;
+                    RCLCPP_INFO(this->get_logger(), "The forklift not is line. The distance is: ", result->distance_to_pallet);
                     // 2. 调用路径计算服务
                     path_client_->async_send_goal(path_goal, options);
-                } else {
-                    // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
-                    double max_theta;   //根据托盘孔径大小进行确定
-                    max_theta = atan2(0.135, 1.68);    //0.135是孔径半径，1.68是雷达距离托盘1.68米
-                    // 0.11 是当雷达偏移到能进入托盘的极限距离
-                    if ((abs(detect_response->x.data) < 0.11) && (abs(detect_response->theta.data) < max_theta) && (detect_response->x.data * detect_response->theta.data < 0)) {
-                        result->success = true;
-                        result->is_pallet_aligned = true;
-                        goal_handle->succeed(result);
-                    } else {
-                        result->is_pallet_aligned = false;
-                        // 2. 调用路径计算服务
-                        path_client_->async_send_goal(path_goal, options);
-                    }
                 }
             } catch(const std::exception& e) {
                 result->success = false;
