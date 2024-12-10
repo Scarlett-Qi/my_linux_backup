@@ -23,5 +23,5 @@ class ForkliftActionServer : public rclcpp::Node {
 
         void execute(const std::shared_ptr<GoalHandleGetPalletLocal> goal_handle);
 
-        double tolerance_theta = 2.0, tolerance_lidar_x = 0.11;
+        double tolerance_theta = 3.0, tolerance_lidar_x = 0.11;
 };
