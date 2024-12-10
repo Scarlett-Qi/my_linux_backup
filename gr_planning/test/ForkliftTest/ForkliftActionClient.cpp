@@ -47,7 +47,7 @@ private:
                                 result.result->path.poses.size());
                     auto last_pose = result.result->path.poses.back();
                     RCLCPP_INFO(this->get_logger(), "Last pose - x: %f, y: %f", last_pose.pose.position.x, last_pose.pose.position.y);
-                    RCLCPP_INFO(this->get_logger(), "is_line:", result.result->is_pallet_aligned);
+                    RCLCPP_INFO(this->get_logger(), "is_line: %d", result.result->is_pallet_aligned);
                 } else {
                     RCLCPP_ERROR(this->get_logger(), "Goal failed or was canceled.");
                 }

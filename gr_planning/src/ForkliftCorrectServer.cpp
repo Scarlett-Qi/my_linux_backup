@@ -66,23 +66,9 @@ void ForkliftCorrectServer::planning(const std::shared_ptr<GoalHandleForkliftPat
 
     RCLCPP_INFO(this->get_logger(), "Lidar_pallet info: %f, %f, %f.", lidar_pallet.x, lidar_pallet.y, lidar_pallet.theta * 180 / M_PI);
 
-    gtsam::Pose2 forklift;
-    // 根据测量实际情况进行计算坐标系
-    // 计算托盘坐标系下，雷达的坐标
-    double p_l_x, p_l_y, p_l_theta;
-    p_l_x = -(lidar_pallet.y + lidar_pallet.x * tan(lidar_pallet.theta)) * cos(lidar_pallet.theta);
-    p_l_y = -(lidar_pallet.x - lidar_pallet.y * tan(lidar_pallet.theta)) * cos(lidar_pallet.theta);
-    p_l_theta = lidar_pallet.theta;
-    // 计算托盘坐标系下，叉车的坐标
-    double p_f_x, p_f_y, p_f_theta;
-    p_f_x = p_l_x + delta_x;
-    p_f_y = p_l_y + delta_y;
-    p_f_theta = p_l_theta;
-    forklift = gtsam::Pose2(p_f_x, p_f_y, p_f_theta);
-
     gtsam::Pose2 pallet;
     // 根据测量实际情况进行计算坐标系
-    if (delta_x == 0 && delta_y == 0 && delta_theta == 0) {    // 都为0,即在雷达坐标系下
+    if (delta_x == 0 && delta_y == 0 && delta_theta == 0) {    // 都为0,即在雷达位置的叉车坐标系
         pallet = gtsam::Pose2(-lidar_pallet.y, lidar_pallet.x, -lidar_pallet.theta);
     } else {
         Eigen::Matrix3d T_FL = transformMatrix(delta_y, delta_x, delta_theta * M_PI / 180.0);      // 雷达到叉车的转换矩阵

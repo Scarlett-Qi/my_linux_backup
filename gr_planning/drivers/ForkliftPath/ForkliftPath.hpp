@@ -23,13 +23,12 @@ class ForkliftPath {
         ForkliftPath();
         ~ForkliftPath()=default;
 
-        nav_msgs::msg::Path PlanPath(gtsam::Pose2 input_pallet, double init_dist);
-        nav_msgs::msg::Path PlanOrientation(gtsam::Pose2 input_pallet);
+        nav_msgs::msg::Path PlanPath(gtsam::Pose2 input_pallet, double lidar_y);
 
         double quaternion2Euler(geometry_msgs::msg::Quaternion orientation);
 
     private:
-        void plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target, double& turn_angle, int& step, int& stop, double dist);
+        void plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target, double& turn_angle, int& step, int& stop, double lidar_y);
         
         std::shared_ptr<PlanOutput> pos_;
         geometry_msgs::msg::PoseStamped Output2Pose(const PlanOutput position);

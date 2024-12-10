@@ -4,14 +4,13 @@ ForkliftPath::ForkliftPath(){
     pos_ = std::make_shared<PlanOutput>();
 }
 
-nav_msgs::msg::Path ForkliftPath::PlanPath(gtsam::Pose2 input_pallet, double init_dist) {
+nav_msgs::msg::Path ForkliftPath::PlanPath(gtsam::Pose2 input_pallet, double lidar_y) {
     // 创建path消息
     nav_msgs::msg::Path path_msg;
     // 路径可视化
     path_msg.header.frame_id = "world";
     path_msg.header.stamp = rclcpp::Clock().now();    
 
-    // gtsam::Pose2 input_pallet(0, 0, 0);
     gtsam::Pose2 input_forklift(0, 0, 0);
     // 设置叉车和托盘的位置与角度
     PlanOutput forklift, pallet;
@@ -39,7 +38,7 @@ nav_msgs::msg::Path ForkliftPath::PlanPath(gtsam::Pose2 input_pallet, double ini
     double turn_angle = 0;
     int stop = 1, step = 1, i = 0;
     while (stop==1) {
-        plan(forklift, pos_, turn_angle, step, stop, init_dist);
+        plan(forklift, pos_, turn_angle, step, stop, lidar_y);
         path_msg.poses.push_back(Output2Pose(forklift));
         i += 1;
     }
@@ -49,10 +48,10 @@ nav_msgs::msg::Path ForkliftPath::PlanPath(gtsam::Pose2 input_pallet, double ini
 
 // 规划纠偏路径
 void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target,
-                        double& turn_angle, int& step, int& stop, double dist) {
+                        double& turn_angle, int& step, int& stop, double lidar_y) {
     if (step == 1) {
         double target_forklift_dist = sqrt(pow((target->x_ - forklift.x_), 2) + pow((target->y_ - forklift.y_), 2));
-        if (target_forklift_dist <= 0.015) { // 如果距离目标点小于1cm，则只旋转
+        if (target_forklift_dist <= 0.01) { // 如果距离目标点小于1cm，则只旋转
             forklift.angle_ = target->angle_;
 
             step = 0;
@@ -64,12 +63,11 @@ void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target
             // double init_angle = atan2(forklift.y_ - target->y_, forklift.x_ - target->x_);
             double init_angle = atan2(target->y_, target->x_);
             init_angle = normalizeAngle(init_angle);
-            std::cout<<"init_angle:" << init_angle * 180.0f / M_PI << std::endl;
+            RCLCPP_INFO(rclcpp::get_logger("Test"), "init_angle: %f.", init_angle * 180.0f / M_PI);
             pre_forklift.angle_ = normalizeAngle(pre_forklift.angle_);
-
-            std::cout<<"pre_angle:" << pre_forklift.angle_ * 180.0f / M_PI << std::endl;
+            RCLCPP_INFO(rclcpp::get_logger("Test"), "pre_angle: %f.", pre_forklift.angle_ * 180.0f / M_PI);
             
-            if (abs(pre_forklift.angle_) < abs(init_angle) && abs(init_angle) > 30 * M_PI / 180.0f || dist < 2.01) {
+            if ((abs(pre_forklift.angle_) < abs(init_angle) && abs(init_angle) > 30 * M_PI / 180.0f) || lidar_y < 2.01) {
                 forklift.x_ += backward * cos(forklift.angle_ * M_PI / 180.0f);
                 forklift.y_ += backward * sin(forklift.angle_ * M_PI / 180.0f);
                 turn_angle = pre_forklift.angle_;
@@ -83,11 +81,6 @@ void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target
         forklift.angle_ = turn_angle * 180.0f / M_PI;
 
         step = 3;
-    // } else if (step == 3) { // 行驶至目标点
-    //     forklift.x_ = target->x_;
-    //     forklift.y_ = target->y_;
-
-    //     step = 4;
     } else if (step == 3) { // 旋转至目标位置
         forklift.x_ = target->x_;
         forklift.y_ = target->y_;
@@ -96,20 +89,6 @@ void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target
         step = 0;
         stop = 0;
     }
-}
-
-// 角度差距小只进行旋转，
-nav_msgs::msg::Path ForkliftPath::PlanOrientation(gtsam::Pose2 input_pallet) {
-    // 创建path消息
-    nav_msgs::msg::Path path_msg;
-    // 路径可视化
-    path_msg.header.frame_id = "world";
-    path_msg.header.stamp = rclcpp::Clock().now();
-
-    gtsam::Pose2 input_forklift(0, 0, 0);    
-    PlanOutput forklift, pallet;
-
-
 }
 
 // 输出为PoseStamped类型

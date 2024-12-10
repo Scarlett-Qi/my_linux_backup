@@ -104,27 +104,32 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
                             return;
                         }
                     };
-                // path_client_->async_send_goal(path_goal, options);
 
-                // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
-                double max_theta;   //根据托盘孔径大小进行确定
-                max_theta = atan2(0.135, 2);    //0.135是孔径半径，2是叉车距离托盘2米
-                // tolerance_lidar_x 是当雷达偏移到能进入托盘的极限距离 && (detect_response->x.data * detect_response->theta.data < 0)
-                if ((abs(detect_response->x.data) < tolerance_lidar_x) && (abs(detect_response->theta.data) < tolerance_theta) && (atan2(abs(detect_response->x.data), 2) * 180.0f / M_PI < tolerance_theta)) {
-                    result->success = true;
-                    result->is_pallet_aligned = true;
-                    result->distance_to_pallet = detect_response->y.data;
-                    goal_handle->succeed(result);
-                    RCLCPP_INFO(this->get_logger(), "The forklift is line. The distance is: ", result->distance_to_pallet);
+                if (detect_response->y.data < 8.0) {
+                    // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
+                    // tolerance_lidar_x 是当雷达偏移到能进入托盘的极限距离 && (detect_response->x.data * detect_response->theta.data < 0)
+                    if ((abs(detect_response->x.data) < tolerance_lidar_x) && (abs(detect_response->theta.data) < tolerance_theta) && (atan2(abs(detect_response->x.data), 2) * 180.0f / M_PI < tolerance_theta)) {
+                        // 如果符合要求就结束
+                        result->success = true;
+                        result->is_pallet_aligned = true;
+                        result->distance_to_pallet = detect_response->y.data;
+                        goal_handle->succeed(result);
+                        RCLCPP_INFO(this->get_logger(), "The forklift is line. The distance is: %f", result->distance_to_pallet);
+                    } else {
+                        result->is_pallet_aligned = false;
+                        result->distance_to_pallet = detect_response->y.data;
+                        RCLCPP_INFO(this->get_logger(), "The forklift not is line. The distance is: %f", result->distance_to_pallet);
+                        // 2. 调用路径计算服务
+                        path_client_->async_send_goal(path_goal, options);
+                    }
                 } else {
-                    result->is_pallet_aligned = false;
-                    result->distance_to_pallet = detect_response->y.data;
-                    RCLCPP_INFO(this->get_logger(), "The forklift not is line. The distance is: ", result->distance_to_pallet);
-                    // 2. 调用路径计算服务
-                    path_client_->async_send_goal(path_goal, options);
+                    result->success = false;
+                    goal_handle->abort(result);
+                    RCLCPP_ERROR(this->get_logger(), "Detect distance is: %f. Detect data was wrong!", detect_response->y.data);
                 }
             } catch(const std::exception& e) {
                 result->success = false;
+                goal_handle->abort(result);
                 RCLCPP_ERROR(this->get_logger(), "Exception while getting service response: %s.", e.what());
             }
         }
