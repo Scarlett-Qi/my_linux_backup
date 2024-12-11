@@ -14,7 +14,7 @@ ForkliftCorrectServer::ForkliftCorrectServer() : Node("gr_planning_forklift_corr
     RCLCPP_INFO(this->get_logger(), "Get Parameter plan_topic is: %s", plan_topic_.c_str());
     RCLCPP_INFO(this->get_logger(), "Get Parameter delta_x, delta_y, delta_theta : %f, %f, %f.", delta_x, delta_y, delta_theta);
 
-    // 创建一个服务
+    // 创建服务
     service_ = rclcpp_action::create_server<ForkliftPathAction>(
         this,
         plan_topic_,
@@ -24,7 +24,7 @@ ForkliftCorrectServer::ForkliftCorrectServer() : Node("gr_planning_forklift_corr
     );
 
     RCLCPP_INFO(this->get_logger(), "ForkliftCorrectServer is READY!");
-    // 创建路径发布器
+    // 创建路径发布器，可视化
     path_pub_ = this->create_publisher<nav_msgs::msg::Path>("forklift_path", 10);
 
     planner_ = std::make_unique<ForkliftPath>();
@@ -50,10 +50,11 @@ void ForkliftCorrectServer::planning(const std::shared_ptr<GoalHandleForkliftPat
     auto feedback = std::make_shared<ForkliftPathAction::Feedback>();
     auto result = std::make_shared<ForkliftPathAction::Result>();
 
+    // 存储纠偏结果
     nav_msgs::msg::Path path_;
 
     if (!goal->success) {
-        RCLCPP_WARN(this->get_logger(), "No pallet data!");
+        RCLCPP_ERROR(this->get_logger(), "No pallet data!");
         goal_handle->abort(result);
         return;
     }
@@ -83,6 +84,7 @@ void ForkliftCorrectServer::planning(const std::shared_ptr<GoalHandleForkliftPat
     path_ = planner_->PlanPath(pallet, lidar_pallet.y);
     feedback->progress = 0.5;
     goal_handle->publish_feedback(feedback);
+    // 发布路径，用于可视化
     path_pub_->publish(path_);
     RCLCPP_INFO(this->get_logger(), "Planning is over.");
 
@@ -110,7 +112,8 @@ void ForkliftCorrectServer::planning(const std::shared_ptr<GoalHandleForkliftPat
         RCLCPP_INFO(this->get_logger(), "ForkliftCorrectServer goal execution completed.");
         return;
     } else {
-        RCLCPP_WARN(this->get_logger(), "No poses found in the path.");
+        goal_handle->abort(result);
+        RCLCPP_ERROR(this->get_logger(), "No poses found in the path.");
         return;
     }
 }

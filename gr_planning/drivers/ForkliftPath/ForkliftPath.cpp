@@ -35,12 +35,12 @@ nav_msgs::msg::Path ForkliftPath::PlanPath(gtsam::Pose2 input_pallet, double lid
     RCLCPP_INFO(rclcpp::get_logger("ForkliftPath"), "Goal pose: %f, %f, %f",
                 pos_->x_, pos_->y_, pos_->angle_);
 
-    double turn_angle = 0;
-    int stop = 1, step = 1, i = 0;
+    // 设置纠偏计算的参数
+    double turn_angle = 0;      // 存储转弯角度
+    int stop = 1, step = 1;     // stop停止标志，step步骤
     while (stop==1) {
         plan(forklift, pos_, turn_angle, step, stop, lidar_y);
         path_msg.poses.push_back(Output2Pose(forklift));
-        i += 1;
     }
 
     return path_msg;
@@ -49,7 +49,7 @@ nav_msgs::msg::Path ForkliftPath::PlanPath(gtsam::Pose2 input_pallet, double lid
 // 规划纠偏路径
 void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target,
                         double& turn_angle, int& step, int& stop, double lidar_y) {
-    if (step == 1) {
+    if (step == 1) { // 确定叉车纠偏规划
         double target_forklift_dist = sqrt(pow((target->x_ - forklift.x_), 2) + pow((target->y_ - forklift.y_), 2));
         if (target_forklift_dist <= 0.01) { // 如果距离目标点小于1cm，则只旋转
             forklift.angle_ = target->angle_;
@@ -57,16 +57,19 @@ void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target
             step = 0;
             stop = 0;
         } else {
+            // 叉车前进 0.5 米后与目标点的转弯角度
             PlanOutput pre_forklift;
             pre_forklift.setPosition(forklift.x_ + backward * cos(forklift.angle_ * M_PI / 180.0f), forklift.y_ + backward * sin(forklift.angle_ * M_PI / 180.0f));
             pre_forklift.setAngle(atan2(pre_forklift.y_ - target->y_, pre_forklift.x_ - target->x_));
-            // double init_angle = atan2(forklift.y_ - target->y_, forklift.x_ - target->x_);
+
+            // 叉车初始到目标点的转弯角度
             double init_angle = atan2(target->y_, target->x_);
             init_angle = normalizeAngle(init_angle);
             RCLCPP_INFO(rclcpp::get_logger("Test"), "init_angle: %f.", init_angle * 180.0f / M_PI);
             pre_forklift.angle_ = normalizeAngle(pre_forklift.angle_);
             RCLCPP_INFO(rclcpp::get_logger("Test"), "pre_angle: %f.", pre_forklift.angle_ * 180.0f / M_PI);
             
+            // 比较叉车前进和初始状态的角度绝对值大小，哪个小用哪个，但是如果距离小于2米，叉车也需要前进0.5米
             if ((abs(pre_forklift.angle_) < abs(init_angle) && abs(init_angle) > 30 * M_PI / 180.0f) || lidar_y < 2.01) {
                 forklift.x_ += backward * cos(forklift.angle_ * M_PI / 180.0f);
                 forklift.y_ += backward * sin(forklift.angle_ * M_PI / 180.0f);

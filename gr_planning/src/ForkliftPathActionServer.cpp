@@ -1,6 +1,7 @@
 #include "ForkliftPathActionServer.hpp"
 
 ForkliftActionServer::ForkliftActionServer() : Node("forklift_action_server") {
+    // 叉车服务
     action_server_ = rclcpp_action::create_server<GetPalletLocal>(
         this,
         "agv/get_pallet_local_position",
@@ -9,7 +10,9 @@ ForkliftActionServer::ForkliftActionServer() : Node("forklift_action_server") {
         std::bind(&ForkliftActionServer::handle_accepted, this, std::placeholders::_1));
     RCLCPP_INFO(this->get_logger(), "ForkliftActionServer is READY!");
 
+    // 检测客户端
     detect_client_ = this->create_client<ridar_service_interface::srv::DetectPointCloud>("ridar_detection_service");
+    // 纠偏客户端
     path_client_ = rclcpp_action::create_client<gr_planning_interface::action::GetPath>(this, "planning_path");
 }
 
@@ -55,6 +58,7 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
     auto detect_future = detect_client_->async_send_request(detect_request, 
         [this, goal_handle, result, feedback](rclcpp::Client<ridar_service_interface::srv::DetectPointCloud>::SharedFuture detect_future) {
             try {
+                // 获取检测结果
                 auto detect_response = detect_future.get();
                 RCLCPP_INFO(this->get_logger(), "Detect result: x = %f, y = %f, theta = %f",
                 detect_response->x.data, detect_response->y.data, detect_response->theta.data);
@@ -62,8 +66,8 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
                 feedback->progress = 0.5;  // 反馈进度
                 goal_handle->publish_feedback(feedback);
 
+                // 设置纠偏目标
                 auto path_goal = gr_planning_interface::action::GetPath::Goal();
-
                 path_goal.lidar_pallet_pose_x = detect_response->x.data;
                 path_goal.lidar_pallet_pose_y = detect_response->y.data;
                 path_goal.lidar_pallet_pose_theta = detect_response->theta.data;
@@ -76,11 +80,12 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
                     return;
                 }
 
+                // 纠偏的反馈和结果回调
                 rclcpp_action::Client<gr_planning_interface::action::GetPath>::SendGoalOptions options;
                 options.feedback_callback = 
                     [this](std::shared_ptr<rclcpp_action::ClientGoalHandle<gr_planning_interface::action::GetPath>>,
                             const std::shared_ptr<const gr_planning_interface::action::GetPath::Feedback> path_feedback) {
-                        RCLCPP_INFO(this->get_logger(), "ForkliftCorrectServer Progress: %.2f", path_feedback->progress);
+                        RCLCPP_INFO(this->get_logger(), "ForkliftCorrectServer Progress: %.2f.", path_feedback->progress);
                     };
 
                 options.result_callback = 
@@ -104,22 +109,24 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
                             return;
                         }
                     };
-
-                if (detect_response->y.data < 8.0 || (detect_response->x.data != 0.0 && detect_response->y.data != 0.0 && detect_response->theta.data != 0.0)) {
-                    // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
+                // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
+                if (detect_response->y.data < 8.0 || 
+                    (detect_response->x.data != 0.0 && detect_response->y.data != 0.0 && detect_response->theta.data != 0.0)) {
                     // tolerance_lidar_x 是当雷达偏移到能进入托盘的极限距离 && (detect_response->x.data * detect_response->theta.data < 0)
-                    if ((abs(detect_response->x.data) < tolerance_lidar_x) && (abs(detect_response->theta.data) < tolerance_theta) && (atan2(abs(detect_response->x.data), 2) * 180.0f / M_PI < tolerance_theta)) {
-                        // 如果符合要求就结束
+                    if ((abs(detect_response->x.data) < tolerance_lidar_y) && 
+                        (abs(detect_response->theta.data) < tolerance_theta) && 
+                        (atan2(abs(detect_response->x.data), 2) * 180.0f / M_PI < tolerance_theta)) {
+                        // 如果符合要求就结束纠偏
                         result->success = true;
                         result->is_pallet_aligned = true;
                         result->distance_to_pallet = detect_response->y.data;
                         goal_handle->succeed(result);
                         RCLCPP_INFO(this->get_logger(), "The forklift is line. The distance is: %f", result->distance_to_pallet);
-                    } else {
+                    } else { // 若不符合要求，则调用纠偏规划
                         result->is_pallet_aligned = false;
                         result->distance_to_pallet = detect_response->y.data;
                         RCLCPP_INFO(this->get_logger(), "The forklift not is line. The distance is: %f", result->distance_to_pallet);
-                        // 2. 调用路径计算服务
+                        // 2. 调用纠偏路径计算
                         path_client_->async_send_goal(path_goal, options);
                     }
                 } else {

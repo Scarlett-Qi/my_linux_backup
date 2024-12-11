@@ -23,5 +23,6 @@ class ForkliftActionServer : public rclcpp::Node {
 
         void execute(const std::shared_ptr<GoalHandleGetPalletLocal> goal_handle);
 
-        double tolerance_theta = 3.0, tolerance_lidar_x = 0.11;
+        // 对于最终点的角度阈值和横向偏移量阈值
+        double tolerance_theta = 3.0, tolerance_lidar_y = 0.11;
 };

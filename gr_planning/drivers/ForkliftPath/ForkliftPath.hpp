@@ -34,6 +34,6 @@ class ForkliftPath {
         geometry_msgs::msg::PoseStamped Output2Pose(const PlanOutput position);
 
         double normalizeAngle(double angle);    // 将角度转化为坐标系角度
-        double backward = 0.50;            // 后退 backward 米
-        double l = 2;                         // 设置目标点距离托盘位置，单位 米
+        double backward = 0.50;            // 后退 0.5 米
+        double l = 2;                         // 设置目标点距离托盘位置 2 米
 };
