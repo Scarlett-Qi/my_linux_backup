@@ -105,7 +105,7 @@ void ForkliftActionServer::execute(const std::shared_ptr<GoalHandleGetPalletLoca
                         }
                     };
 
-                if (detect_response->y.data < 8.0) {
+                if (detect_response->y.data < 8.0 || (detect_response->x.data != 0.0 && detect_response->y.data != 0.0 && detect_response->theta.data != 0.0)) {
                     // 判断当前角度是否符合要求，如果不对，则再重新根据检测结果运行
                     // tolerance_lidar_x 是当雷达偏移到能进入托盘的极限距离 && (detect_response->x.data * detect_response->theta.data < 0)
                     if ((abs(detect_response->x.data) < tolerance_lidar_x) && (abs(detect_response->theta.data) < tolerance_theta) && (atan2(abs(detect_response->x.data), 2) * 180.0f / M_PI < tolerance_theta)) {
