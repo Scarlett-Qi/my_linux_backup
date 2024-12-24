@@ -65,9 +65,9 @@ void ForkliftPath::plan(PlanOutput& forklift, std::shared_ptr<PlanOutput> target
             // 叉车初始到目标点的转弯角度
             double init_angle = atan2(target->y_, target->x_);
             init_angle = normalizeAngle(init_angle);
-            RCLCPP_INFO(rclcpp::get_logger("Test"), "init_angle: %f.", init_angle * 180.0f / M_PI);
+            // RCLCPP_INFO(rclcpp::get_logger("Test"), "init_angle: %f.", init_angle * 180.0f / M_PI);
             pre_forklift.angle_ = normalizeAngle(pre_forklift.angle_);
-            RCLCPP_INFO(rclcpp::get_logger("Test"), "pre_angle: %f.", pre_forklift.angle_ * 180.0f / M_PI);
+            // RCLCPP_INFO(rclcpp::get_logger("Test"), "pre_angle: %f.", pre_forklift.angle_ * 180.0f / M_PI);
             
             // 比较叉车前进和初始状态的角度绝对值大小，哪个小用哪个，但是如果距离小于2米，叉车也需要前进0.5米
             if ((abs(pre_forklift.angle_) < abs(init_angle) && abs(init_angle) > 30 * M_PI / 180.0f) || lidar_y < 2.01) {
